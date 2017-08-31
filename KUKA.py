@@ -10,7 +10,7 @@ class robot:
         self.IP = IP
 
         self.obj = 0
-        self.obj_name = 'youBot_ref'
+        self.obj_name = 'Dummy'#'youBot_ref'
         self.cord = 0
         self.drivers_dict = {}
         self.drivers_list = ['rollingJoint_fl',
@@ -18,6 +18,10 @@ class robot:
                              'rollingJoint_rl',
                              'rollingJoint_rr']
         self.tube_name = 'HokuyoData'
+        self.init_pos = []
+        self.first_call = True
+        self.sec_first_call = True
+        self.sim_first_call = True
 
     def initialize(self):
         self.obj = vrep.simxGetObjectHandle(self.id, self.obj_name, vrepConst.simx_opmode_oneshot_wait)[1]
@@ -25,6 +29,18 @@ class robot:
             for val in self.drivers_list:
                 joint = vrep.simxGetObjectHandle(self.id, val, vrepConst.simx_opmode_oneshot_wait)[1]
                 self.drivers_dict.setdefault(val, joint)
+                # self.get_rob_pos()
+                # self.get_rob_pos()
+
+    def get_rob_pos(self):
+        if self.id != -1:
+            if self.first_call:
+                mode = vrepConst.simx_opmode_streaming
+            else:
+                mode = vrepConst.simx_opmode_buffer
+            joint = vrep.simxGetObjectHandle(self.id, 'youBot', vrepConst.simx_opmode_oneshot_wait)[1]
+            err, self.init_pos = vrep.simxGetObjectPosition(self.id, joint, -1, mode)
+            print()
 
     def setVelocity(self, list_vel):
         if self.id != -1:
@@ -32,12 +48,13 @@ class robot:
                 res = vrep.simxSetJointTargetVelocity(self.id, self.drivers_dict[val], list_vel[i],
                                                       vrepConst.simx_opmode_oneshot_wait)
 
-    def setVelocityVect(self, vel, rot, bvel):
-        print('')
 
-        SPEED = 4
-        ROTATE = 2
-        MOV = 1
+    def setVelocityVect(self, vel, rot, bvel):
+        #print('')
+
+        SPEED = 2
+        ROTATE = 1
+        MOV = 0.5
 
         vel *= SPEED
         rot *= ROTATE
@@ -54,8 +71,15 @@ class robot:
 
     def getLaserPoints(self):
         if self.id != -1:
-            res = vrep.simxGetStringSignal(self.id, self.tube_name, vrepConst.simx_opmode_streaming)
-            time.sleep(1)
+            if self.sec_first_call:
+                mode = vrepConst.simx_opmode_streaming
+                res = vrep.simxGetStringSignal(self.id, self.tube_name, vrepConst.simx_opmode_streaming)
+                time.sleep(0.05)
+                self.sec_first_call = False
+
+            else:
+                mode = vrepConst.simx_opmode_buffer
+
             res = vrep.simxGetStringSignal(self.id, self.tube_name, vrepConst.simx_opmode_buffer)
             r = vrep.simxUnpackFloats(res[1])
             return r
@@ -90,7 +114,18 @@ class robot:
     def get_segment(self):
         list_of_points = self.unpack()
 
+    def check_collision(self):
+        if self.id != -1:
 
+            mode = 0
+            if self.sim_first_call:
+                mode = vrepConst.simx_opmode_streaming
+            else:
+                mode = vrepConst.simx_opmode_buffer
+            res = vrep.simxGetIntegerSignal(self.id, 'collision_detection', mode)
+            time.sleep(0.03)
+            self.sim_first_call = False
+            return res[1]
 
     def getCoordinate(self):
         res = []
@@ -98,11 +133,26 @@ class robot:
         if self.id != -1:
             #function are simx_opmode_streaming (the first call) and simx_opmode_buffer (the following calls)
             res = vrep.simxGetObjectPosition(self.id, self.obj, -1, vrepConst.simx_opmode_streaming)
-            sleep(0.5)
+            sleep(0.05)
             res = vrep.simxGetObjectPosition(self.id, self.obj, -1, vrepConst.simx_opmode_buffer)
         # self.cord += 1
 
         return res[1]
+
+    def set_init_coordinate(self):
+        if self.id != -1:
+            joint = vrep.simxGetObjectHandle(self.id, 'youBot', vrepConst.simx_opmode_oneshot_wait)[1]
+            err = vrep.simxSetObjectPosition(self.id, joint, -1, self.init_pos, vrepConst.simx_opmode_oneshot)
+
+
+    def get_orientation(self):
+        res = [0, 0, 0]
+
+        if(self.id != -1):
+            res = vrep.simxGetObjectOrientation(self.id, self.obj, -1, vrepConst.simx_opmode_streaming)
+            sleep(0.5)
+            res = vrep.simxGetObjectOrientation(self.id, self.obj, -1, vrepConst.simx_opmode_buffer)
+        return res[1][2]
 
     def start_simulation(self):
         self.id = vrep.simxStart(self.IP, self.PORT, True, True, 5000, 5)
