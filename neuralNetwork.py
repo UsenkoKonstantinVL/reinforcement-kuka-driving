@@ -161,7 +161,15 @@ class LearningNetwork_3:
     def __init__(self, network_name):
         self.network_name = network_name
         self.file = 'network\\' + self.network_name + '.net'
+        self.alpha = 0
+        self.sigma = 0
         self.initialize()
+
+
+    def get_param(self, alpha, sigma):
+        self.alpha = alpha
+        self.sigma = sigma
+        raise NotImplemented()
 
     # Инициализация нейронной сети
     def initialize(self):
@@ -207,8 +215,12 @@ class LearningNetwork_3:
     # Вычисление Q значений
     def get_prediction(self, input):
         ret = self.network.predict(np.array(input))
-        #print()
         return ret[0]
+
+    def update_secondnn(self):
+        # TODO функция обновления копии НС
+        raise NotImplemented()
+        pass
 
     # Тренировка НС
     def training(self, train_data, N=3):
@@ -220,6 +232,79 @@ class LearningNetwork_3:
             out_mtrx.append(var[1])
         self.network.train(np.array(train_mtrx), np.array(out_mtrx), epochs=N)#([np.array(var[0])], [np.array(var[1])], epochs=N)
         print(self.network.errors)
+
+    def training_newformatdata(self, train_data, N=3):
+        # Формат входных данных: [s, s', r, a] - {текущее состояние, новое состояние, вознаграждение, действие} +
+        # данные с лидара
+
+
+        raise NotImplemented()
+
+        train_mtrx = []
+        out_mtrx = []
+
+        for var in train_data:
+            train_mtrx.append(var[0])
+            outpt = self.get_output(var[0], var[1])
+            out_mtrx.append(outpt)
+        self.network.train(np.array(train_mtrx), np.array(out_mtrx),
+                           epochs=N)  # ([np.array(var[0])], [np.array(var[1])], epochs=N)
+        # Программа должна дойти до этого места
+        # НС завершила свое обучение
+        print(self.network.errors)
+
+
+    def get_output(self, inpt, condition):
+        # condition = [new_state, action, reward]
+        # Вычисление Q функции состояния s от НС
+        q = self.get_prediction(inpt)
+        # Вычисление Q' функцкции состояния s' от НС
+        # TODO Подумать над тем, чтобы вычисление Q' занималась копия НС
+        q_new = self.get_output(condition[0])
+
+        m_q1, m_q2, m_q3 = self.get_max_Q(q_new)
+
+        # Пересчитывание Q с учетом reward
+        reward = condition[2]
+
+        q[condition[1][0]] = q[condition[1][0]] + self.alpha * (reward[0] + self.sigma * m_q1 - q[condition[1][1]])
+        q[condition[1][1] + 3] = q[condition[1][1] + 3] + self.self.alpha * (reward[1] + self.sigma * m_q2 - q[condition[1][1] + 3])
+        q[condition[1][2] + 6] = q[condition[1][1] + 6] + self.alpha * (reward[2] + self.sigma * m_q3 - q[condition[1][1] + 6])
+
+        raise NotImplemented()
+
+        # q должно быть матрицей с обновленными значениями
+        return q
+
+    def get_max_Q(self, res):
+        raise NotImplemented()
+
+        max_q = 0
+        l = 0
+        for i in range(3):
+            n = i + l
+            if res[n] > max_q:
+                max_q = res[n]
+                act1 = max_q
+
+        max_q = 0
+        l += 3
+        for i in range(3):
+            n = i + l
+            if res[n] > max_q:
+                max_q = res[n]
+                act2 = max_q
+
+        max_q = 0
+        l += 3
+        for i in range(3):
+            n = i + l
+            if res[n] > max_q:
+                max_q = res[n]
+                act3 = max_q
+
+        # act1, act2 и act3 указывают на действие с наибольшей оценкой
+        return act1, act2, act3
 
     # Сохранение НС
     def save_nn(self):

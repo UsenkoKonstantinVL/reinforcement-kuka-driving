@@ -48,6 +48,10 @@ class robot:
                 res = vrep.simxSetJointTargetVelocity(self.id, self.drivers_dict[val], list_vel[i],
                                                       vrepConst.simx_opmode_oneshot_wait)
 
+    def restartscene(self):
+        # TODO реализовать перезапуск сцены
+        raise NotImplemented()
+        pass
 
     def setVelocityVect(self, vel, rot, bvel):
         #print('')

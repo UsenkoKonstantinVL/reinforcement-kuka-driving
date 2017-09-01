@@ -31,6 +31,8 @@ def traing_network(network, robot, traing_rate=1000):
     var_max_q = -100
     var_min_q = 100
 
+    network.get_param(alpha, sigma)
+
     act_rand = 0
     act_net = 0
 
@@ -40,6 +42,8 @@ def traing_network(network, robot, traing_rate=1000):
 
     # TODO придумать условие завершения обучения
     while(game < 1000001):
+        # 1 игра - 1 цикл
+        # 1 эпизод - 100 игр или если робот достиг цели или врезался в препятствие
         # select action
 
         network_res = []
@@ -51,9 +55,10 @@ def traing_network(network, robot, traing_rate=1000):
 
         inpt, lidar_d = get_input_vec(container, goal_pos)
 
+        # Управление роботом НС
         if ran < (1 - eps):
             a1, a2, a3, network_res = get_action(network, inpt)
-            a1, a2, a3, network_res = get_pid_action(robot, network, inpt)
+            # a1, a2, a3, network_res = get_pid_action(robot, network, inpt)
             set_action(a1, a2, a3, robot)
             act_net += 1
         # else:
@@ -61,6 +66,8 @@ def traing_network(network, robot, traing_rate=1000):
         #     a1, a2, a3, network_res = get_pid_action(robot, network, inpt)
         #     set_action(a1, a2, a3, robot)
         #     act_net += 1
+
+        # Рандомное управление
         else:
             a1, a2, a3, network_res = get_random_actions(network, inpt)
             set_action(a1, a2, a3, robot)
@@ -70,45 +77,55 @@ def traing_network(network, robot, traing_rate=1000):
         container.update(robot.getCoordinate(), robot.unpack(), robot.get_orientation())
 
         # get reward and maxQ
-        m_q1, m_q2, m_q3 = get_max_Q(network_q, container, goal_pos)
+        m_q1, m_q2, m_q3, new_state = get_max_Q(network_q, container, goal_pos)
         reward = get_reward_with_collicion(robot, inpt[18], inpt[19], game)
+        # НЕНУЖНЫЙ КОД
         # reward = get_reward_d(container, inpt[18], inpt[19], lidar_d, game)
         # compute current Q
-        network_res[a1] = network_res[a1] + alpha * (reward[0] + sigma * m_q1 - network_res[a1])
-        network_res[a2 + 3] = network_res[a2 + 3] + alpha * (reward[1] + sigma * m_q2 - network_res[a2 + 3])
-        network_res[a3 + 6] = network_res[a3 + 6] + alpha * (reward[2] + sigma * m_q3 - network_res[a3 + 6])
+        # network_res[a1] = network_res[a1] + alpha * (reward[0] + sigma * m_q1 - network_res[a1])
+        # network_res[a2 + 3] = network_res[a2 + 3] + alpha * (reward[1] + sigma * m_q2 - network_res[a2 + 3])
+        # network_res[a3 + 6] = network_res[a3 + 6] + alpha * (reward[2] + sigma * m_q3 - network_res[a3 + 6])
+        # КОНЕЦ НЕНУЖНОГО КОДА
 
         # тренировочная дата: [входные данные, выходные данные]
-        training_data.append([inpt, network_res])
+        # training_data.append([inpt, network_res])
         # network.training(training_data)
-
-        # if var_max_q < max(reward[0], reward[1], reward[2]):
-        #     var_max_q = max(reward[0], reward[1], reward[2])
-        #
-        # if var_min_q > min(reward[0], reward[1], reward[2]):
-        #     var_min_q = min(reward[0], reward[1], reward[2])
 
         average_act += reward[0]
         average_act += reward[1]
         average_act += reward[2]
 
+        # Формирование тренировочного массива
+        train_data = [new_state, [a1, a2, a3], reward]# Новый тип данных
+        training_data.append([inpt, train_data])
+        # TODO Реализовать составление формирование данных для тренировки НС
+        # TODO При столкновении перезапустить сцену
+        raise NotImplemented()
+
         if (game % traing_rate) == 0:
             # тренировка
             # game = 0
             print("Training network")
+            # При тренировки НС остановить робота
             robot.setVelocityVect(0, 0, 0)
-            network.training(training_data, N=10)
+            #network.training(training_data, N=10)
+            # Тренировка НС
+            network.training_newformatdata(training_data, N=10)
             network.save_nn()
             #training_data = []
 
+        # Обновление копии НС, используемой для вычисления Q'
         if game % 1000 == 0:
             network_q = deepcopy(network)
+            network.update_secondnn()
 
+        # Обновление тренировочных данных
         if (game % (traing_rate * 10) == 0):
             training_data = []
 
         t_avegage_act = average_act
 
+        # Вывод информации каждые 10 игр
         if game % 10 == 0:
             print("Game: " + str(game))
             print("Game data: " + str(container.pos) + " : " + str(container.orientation))
@@ -119,10 +136,18 @@ def traing_network(network, robot, traing_rate=1000):
             average_act = 0
             ran = random.random()
 
-        if (game % 100) == 0 or (inpt[18] < 0.125):
+        # Конец эпизода
+        collision = robot.check_collision()
+        if (game % 100) == 0 or (inpt[18] < 0.125 or collision == 1):
             goal_pos = get_goal_point(container)
             print("Game probability: " + str(act_net) + ' :(rand) ' + str(act_rand))
             print("New goal: " + str(goal_pos))
+
+            # При столкновении с препятствием перезапуск сцены
+            if collision == 1:
+                raise NotImplemented()
+                robot.setVelocityVect(0, 0, 0)
+                robot.restartscene()
 
             act_rand = 0
             act_net = 0
@@ -130,6 +155,7 @@ def traing_network(network, robot, traing_rate=1000):
             t_avegage_act = 0
 
         game += 1
+        # Конец цикла - игры
 
     network.save_nn()
 
@@ -349,7 +375,7 @@ def get_max_Q(network, container, goal_pos):
             max_q = res[n]
             act3 = max_q
 
-    return act1, act2, act3
+    return act1, act2, act3, inpt
 
 
 def set_action(act1, act2, act3, robot):
