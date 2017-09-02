@@ -127,7 +127,6 @@ def traing_network(network, robot, traing_rate=1000):
 
         # Вывод информации каждые 10 игр
         if game % 10 == 0:
-            robot.restartscene()
             print("Game: " + str(game))
             print("Game data: " + str(container.pos) + " : " + str(container.orientation))
             print("Game data: " + str(inpt[18]) + " : " + str(inpt[19]))
