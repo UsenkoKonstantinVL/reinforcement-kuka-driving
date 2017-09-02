@@ -49,9 +49,10 @@ class robot:
                                                       vrepConst.simx_opmode_oneshot_wait)
 
     def restartscene(self):
-        # TODO реализовать перезапуск сцены
-        raise NotImplemented()
-        pass
+        vrep.simxStopSimulation(self.id, vrepConst.simx_opmode_oneshot)
+
+        vrep.simxStartSimulation(self.id, vrepConst.simx_opmode_oneshot)
+
 
     def setVelocityVect(self, vel, rot, bvel):
         #print('')

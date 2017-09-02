@@ -1,6 +1,7 @@
 from neupy import layers, algorithms, init
 import dill
 import numpy as np
+from copy import deepcopy
 
 class LearningNetwork:
     def __init__(self, network_name):
@@ -169,7 +170,6 @@ class LearningNetwork_3:
     def get_param(self, alpha, sigma):
         self.alpha = alpha
         self.sigma = sigma
-        raise NotImplemented()
 
     # Инициализация нейронной сети
     def initialize(self):
@@ -178,8 +178,8 @@ class LearningNetwork_3:
                 layers.Input(20),
                 layers.Linear(20, weight=init.Uniform(-0.5, 0.5)) ,
                 layers.LeakyRelu(15, weight=init.Uniform(-0.5, 0.5)),
-                layers.LeakyRelu(15, weight=init.Uniform(-0.5, 0.5)),
-                layers.LeakyRelu(12, weight=init.Uniform(-0.5, 0.5)),
+                # layers.LeakyRelu(15, weight=init.Uniform(-0.5, 0.5)),
+                # layers.LeakyRelu(12, weight=init.Uniform(-0.5, 0.5)),
                 layers.Linear(9, weight=init.Uniform(-0.5, 0.5)),
             ],
 
@@ -193,6 +193,8 @@ class LearningNetwork_3:
 
         )
         self.network.architecture()
+
+        self.update_secondnn()
         # self.network = algorithms.Momentum(
         #     [
         #         layers.Input(20),
@@ -217,10 +219,12 @@ class LearningNetwork_3:
         ret = self.network.predict(np.array(input))
         return ret[0]
 
+    def get_predict_withcopynn(self, input):
+        ret = self.network.predict(np.array(input))
+        return ret[0]
+
     def update_secondnn(self):
-        # TODO функция обновления копии НС
-        raise NotImplemented()
-        pass
+        self.network_q = deepcopy(self.network)
 
     # Тренировка НС
     def training(self, train_data, N=3):
@@ -236,10 +240,6 @@ class LearningNetwork_3:
     def training_newformatdata(self, train_data, N=3):
         # Формат входных данных: [s, s', r, a] - {текущее состояние, новое состояние, вознаграждение, действие} +
         # данные с лидара
-
-
-        raise NotImplemented()
-
         train_mtrx = []
         out_mtrx = []
 
@@ -257,10 +257,9 @@ class LearningNetwork_3:
     def get_output(self, inpt, condition):
         # condition = [new_state, action, reward]
         # Вычисление Q функции состояния s от НС
-        q = self.get_prediction(inpt)
+        q = self.get_predict_withcopynn(inpt)
         # Вычисление Q' функцкции состояния s' от НС
-        # TODO Подумать над тем, чтобы вычисление Q' занималась копия НС
-        q_new = self.get_output(condition[0])
+        q_new = self.get_output(inpt, condition[0])
 
         m_q1, m_q2, m_q3 = self.get_max_Q(q_new)
 
@@ -271,14 +270,10 @@ class LearningNetwork_3:
         q[condition[1][1] + 3] = q[condition[1][1] + 3] + self.self.alpha * (reward[1] + self.sigma * m_q2 - q[condition[1][1] + 3])
         q[condition[1][2] + 6] = q[condition[1][1] + 6] + self.alpha * (reward[2] + self.sigma * m_q3 - q[condition[1][1] + 6])
 
-        raise NotImplemented()
-
         # q должно быть матрицей с обновленными значениями
         return q
 
     def get_max_Q(self, res):
-        raise NotImplemented()
-
         max_q = 0
         l = 0
         for i in range(3):

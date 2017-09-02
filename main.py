@@ -98,9 +98,9 @@ def traing_network(network, robot, traing_rate=1000):
         # Формирование тренировочного массива
         train_data = [new_state, [a1, a2, a3], reward]# Новый тип данных
         training_data.append([inpt, train_data])
-        # TODO Реализовать составление формирование данных для тренировки НС
-        # TODO При столкновении перезапустить сцену
-        raise NotImplemented()
+        # T-ODO Реализовать составление формирование данных для тренировки НС
+        # T-ODO При столкновении перезапустить сцену
+        # raise NotImplemented()
 
         if (game % traing_rate) == 0:
             # тренировка
@@ -127,6 +127,7 @@ def traing_network(network, robot, traing_rate=1000):
 
         # Вывод информации каждые 10 игр
         if game % 10 == 0:
+            robot.restartscene()
             print("Game: " + str(game))
             print("Game data: " + str(container.pos) + " : " + str(container.orientation))
             print("Game data: " + str(inpt[18]) + " : " + str(inpt[19]))
@@ -145,7 +146,7 @@ def traing_network(network, robot, traing_rate=1000):
 
             # При столкновении с препятствием перезапуск сцены
             if collision == 1:
-                raise NotImplemented()
+                # raise NotImplemented()
                 robot.setVelocityVect(0, 0, 0)
                 robot.restartscene()
 
@@ -551,7 +552,7 @@ if __name__ == '__main__':
     robot.initialize()
     robot.getCoordinate()
     robot.check_collision()
-    network = LearningNetwork_3("ten")
+    network = LearningNetwork_3("eleven")
     # network.open_nn()
 
     traing_network(network, robot, traing_rate=500)
